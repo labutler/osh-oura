@@ -1,4 +1,4 @@
-rootProject.name = 'osh-node'
+rootProject.name = 'osh-oura'
 def includeDir = "$rootDir/include"
 def sensorDir = "$includeDir/osh-addons/sensors"
 def persistenceDir = "$includeDir/osh-addons/persistence"
