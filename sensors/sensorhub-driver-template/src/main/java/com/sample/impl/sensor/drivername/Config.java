@@ -39,4 +39,8 @@ public class Config extends SensorConfig {
     @DisplayInfo.Required
     @DisplayInfo(desc = "Serial number or unique identifier")
     public String serialNumber = "sensor001";
+
+    @DisplayInfo.Required
+    @DisplayInfo(desc="Only data matching this filter will be accessible through this storage instance")
+    public DataFilter timeFilter = new DataFilter();
 }

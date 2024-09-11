@@ -13,10 +13,12 @@
  ******************************* END LICENSE BLOCK ***************************/
 package com.sample.impl.sensor.drivername;
 
+import net.opengis.sensorml.v20.PhysicalSystem;
 import org.sensorhub.api.common.SensorHubException;
 import org.sensorhub.impl.sensor.AbstractSensorModule;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.vast.sensorML.SMLHelper;
 
 /**
  * Sensor driver providing sensor description, output registration, initialization and shutdown of driver and outputs.
@@ -28,7 +30,24 @@ public class Sensor extends AbstractSensorModule<Config> {
 
     private static final Logger logger = LoggerFactory.getLogger(Sensor.class);
 
-    Output output;
+    SleepOutput sleepOutput;
+    SpO2Output spO2Output;
+    HeartOutput heartOutput; // Added 08/19
+    ReadinessOutput readinessOutput; // Added 09/10
+
+    @Override
+    protected void updateSensorDescription() {
+        synchronized (sensorDescLock) {
+            super.updateSensorDescription();
+            if (!sensorDescription.isSetDescription()) {
+                sensorDescription.setDescription("Oura Ring Data");
+                SMLHelper smlHelper = new SMLHelper();
+                smlHelper.edit((PhysicalSystem) sensorDescription)
+                        .addIdentifier(smlHelper.identifiers.serialNumber("00001"))
+                        .addClassifier(smlHelper.classifiers.sensorType("Wearable Health Monitor"));
+            }
+        }
+    }
 
     @Override
     public void doInit() throws SensorHubException {
@@ -36,15 +55,25 @@ public class Sensor extends AbstractSensorModule<Config> {
         super.doInit();
 
         // Generate identifiers
-        generateUniqueID("[URN]", config.serialNumber);
-        generateXmlID("[XML-PREFIX]", config.serialNumber);
+        generateUniqueID("urn:osh:sensor:oura", config.serialNumber);
+        generateXmlID("Oura Ring", config.serialNumber);
 
         // Create and initialize output
-        output = new Output(this);
+        sleepOutput = new SleepOutput(this);
+        addOutput(sleepOutput, false);
+        sleepOutput.doInit();
 
-        addOutput(output, false);
+        spO2Output = new SpO2Output(this);
+        addOutput(spO2Output, false);
+        spO2Output.doInit();
 
-        output.doInit();
+        heartOutput = new HeartOutput(this);
+        addOutput(heartOutput, false);
+        heartOutput.doInit();
+
+        readinessOutput = new ReadinessOutput(this);
+        addOutput(readinessOutput, false);
+        readinessOutput.doInit();
 
         // TODO: Perform other initialization
     }
@@ -52,10 +81,20 @@ public class Sensor extends AbstractSensorModule<Config> {
     @Override
     public void doStart() throws SensorHubException {
 
-        if (null != output) {
+        if (null != sleepOutput) {
+            sleepOutput.doStart();
+        }
 
-            // Allocate necessary resources and start outputs
-            output.doStart();
+        if (null != spO2Output) {
+            spO2Output.doStart();
+        }
+
+        if (null != heartOutput) {
+            heartOutput.doStart();
+        }
+
+        if (null != readinessOutput) {
+            readinessOutput.doStart();
         }
 
         // TODO: Perform other startup procedures
@@ -64,9 +103,20 @@ public class Sensor extends AbstractSensorModule<Config> {
     @Override
     public void doStop() throws SensorHubException {
 
-        if (null != output) {
+        if (null != sleepOutput) {
+            sleepOutput.doStop();
+        }
 
-            output.doStop();
+        if (null != spO2Output) {
+            spO2Output.doStop();
+        }
+
+        if (null != heartOutput) {
+            heartOutput.doStop();
+        }
+
+        if (null != readinessOutput) {
+            readinessOutput.doStop();
         }
 
         // TODO: Perform other shutdown procedures
@@ -76,6 +126,6 @@ public class Sensor extends AbstractSensorModule<Config> {
     public boolean isConnected() {
 
         // Determine if sensor is connected
-        return output.isAlive();
+        return (sleepOutput.isAlive() && spO2Output.isAlive() && heartOutput.isAlive() && readinessOutput.isAlive());
     }
 }

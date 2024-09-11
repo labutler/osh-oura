@@ -1,11 +1,12 @@
-description = 'Put your description here'
-ext.details = "Details here"
+description = 'Oura Ring Driver'
+ext.details = "Oura Ring"
 version = '1.0.0'
 
 dependencies {
     implementation 'org.sensorhub:sensorhub-core:' + oshCoreVersion
 //    implementation project(':sensorhub-service-video')
 //    implementation project(':sensorhub-driver-videocam')
+    implementation 'org.json:json:20240303'
     testImplementation('junit:junit:4.13.1')
 }
 
@@ -29,8 +30,8 @@ osgi {
 ext.pom >>= {
     developers {
         developer {
-            id 'some id'
-            name 'Your name'
+            id 'labutler'
+            name 'Lee Butler'
             organization ''
             organizationUrl ''
         }

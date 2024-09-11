@@ -17,11 +17,23 @@ import net.opengis.swe.v20.DataBlock;
 import net.opengis.swe.v20.DataComponent;
 import net.opengis.swe.v20.DataEncoding;
 import net.opengis.swe.v20.DataRecord;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.sensorhub.api.data.DataEvent;
 import org.sensorhub.impl.sensor.AbstractSensorOutput;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.vast.swe.helper.GeoPosHelper;
+import org.vast.swe.SWEHelper;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
 
 /**
  * Output specification and provider for {@link Sensor}.
@@ -29,13 +41,13 @@ import org.vast.swe.helper.GeoPosHelper;
  * @author your_name
  * @since date
  */
-public class Output extends AbstractSensorOutput<Sensor> implements Runnable {
+public class HeartOutput extends AbstractSensorOutput<Sensor> implements Runnable {
 
-    private static final String SENSOR_OUTPUT_NAME = "[NAME]";
-    private static final String SENSOR_OUTPUT_LABEL = "[LABEL]";
-    private static final String SENSOR_OUTPUT_DESCRIPTION = "[DESCRIPTION]";
+    private static final String SENSOR_OUTPUT_NAME = "Heart";
+    private static final String SENSOR_OUTPUT_LABEL = "Heart";
+    private static final String SENSOR_OUTPUT_DESCRIPTION = "Heart Data";
 
-    private static final Logger logger = LoggerFactory.getLogger(Output.class);
+    private static final Logger logger = LoggerFactory.getLogger(HeartOutput.class);
 
     private DataRecord dataStruct;
     private DataEncoding dataEncoding;
@@ -55,7 +67,7 @@ public class Output extends AbstractSensorOutput<Sensor> implements Runnable {
      *
      * @param parentSensor Sensor driver providing this output
      */
-    Output(Sensor parentSensor) {
+    HeartOutput(Sensor parentSensor) {
 
         super(SENSOR_OUTPUT_NAME, parentSensor);
 
@@ -71,19 +83,21 @@ public class Output extends AbstractSensorOutput<Sensor> implements Runnable {
         logger.debug("Initializing Output");
 
         // Get an instance of SWE Factory suitable to build components
-        GeoPosHelper sweFactory = new GeoPosHelper();
+        SWEHelper sweFactory = new SWEHelper();
 
         // TODO: Create data record description
         dataStruct = sweFactory.createRecord()
                 .name(SENSOR_OUTPUT_NAME)
+                .definition("urn:osh:data:oura:heart")
                 .label(SENSOR_OUTPUT_LABEL)
                 .description(SENSOR_OUTPUT_DESCRIPTION)
                 .addField("sampleTime", sweFactory.createTime()
                         .asSamplingTimeIsoUTC()
                         .label("Sample Time")
                         .description("Time of data collection"))
-                .addField("data", sweFactory.createText()
-                        .label("Example Data"))
+                .addField("heartRate", sweFactory.createQuantity()
+                        .definition(SWEHelper.getCfUri("heart_rate"))
+                        .label("Heart Rate"))
                 .build();
 
         dataEncoding = sweFactory.newTextEncoding(",", "\n");
@@ -158,6 +172,9 @@ public class Output extends AbstractSensorOutput<Sensor> implements Runnable {
         return accumulator / (double) MAX_NUM_TIMING_SAMPLES;
     }
 
+
+
+
     @Override
     public void run() {
 
@@ -166,8 +183,28 @@ public class Output extends AbstractSensorOutput<Sensor> implements Runnable {
         long lastSetTimeMillis = System.currentTimeMillis();
 
         try {
+            // TODO: Need to use getters & setters for timeFilter?
+            Config config = new Config();
 
-            while (processSets) {
+            LocalDateTime now = LocalDateTime.now();
+            ZoneId zone = ZoneId.of("America/Chicago");
+            ZoneOffset zoneOffset = zone.getRules().getOffset(now);
+
+            String startDate = config.timeFilter.startTime.toInstant().atZone(zoneOffset).toLocalDate().toString();
+            String endDate = config.timeFilter.endTime.toInstant().atZone(zoneOffset).toLocalDate().toString();
+
+            String requestString = "https://api.ouraring.com/v2/usercollection/heartrate?start_datetime=";
+            requestString += startDate;
+            requestString += "T00:00:00-08:00";
+            requestString += "&end_datetime=";
+            requestString += endDate;
+            requestString += "T00:00:00-08:00";
+
+            String heart_response = makeRequest(requestString);
+            JSONObject[] heart_jsons = getDataRecord(heart_response);
+
+            int i = 0;
+            while (i < heart_jsons.length) {
 
                 DataBlock dataBlock;
                 if (latestRecord == null) {
@@ -178,6 +215,18 @@ public class Output extends AbstractSensorOutput<Sensor> implements Runnable {
 
                     dataBlock = latestRecord.renew();
                 }
+
+                if (!heart_jsons[i].isNull("bpm")) {
+                    // TODO: Populate data block
+                    String raw_datetime = heart_jsons[i].getString("timestamp");
+                    LocalDateTime dateTime = LocalDateTime.parse(raw_datetime.substring(0, raw_datetime.lastIndexOf("+")));
+                    dataBlock.setDoubleValue(0, dateTime.toEpochSecond(zoneOffset));
+                    dataBlock.setIntValue(1, heart_jsons[i].getInt("bpm"));
+                    latestRecord = dataBlock;
+                    latestRecordTime = dateTime.toEpochSecond(zoneOffset);
+                    eventHandler.publish(new DataEvent(latestRecordTime, HeartOutput.this, dataBlock));
+                }
+                else System.out.println("Record REJECTED due to NULL value");
 
                 synchronized (histogramLock) {
 
@@ -192,22 +241,7 @@ public class Output extends AbstractSensorOutput<Sensor> implements Runnable {
 
                 ++setCount;
 
-                double timestamp = System.currentTimeMillis() / 1000d;
-
-                // TODO: Populate data block
-                dataBlock.setDoubleValue(0, timestamp);
-                dataBlock.setStringValue(1, "Your data here");
-
-                latestRecord = dataBlock;
-
-                latestRecordTime = System.currentTimeMillis();
-
-                eventHandler.publish(new DataEvent(latestRecordTime, Output.this, dataBlock));
-
-                synchronized (processingLock) {
-
-                    processSets = !stopProcessing;
-                }
+                i++;
             }
 
         } catch (Exception e) {
@@ -223,4 +257,34 @@ public class Output extends AbstractSensorOutput<Sensor> implements Runnable {
             logger.debug("Terminating worker thread: {}", this.name);
         }
     }
+
+    public static String makeRequest(String requestString) throws IOException, InterruptedException {
+        HttpClient client = HttpClient.newHttpClient();
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(requestString))
+                .header("Authorization", "Bearer KEAZBXNBUZUMICTHQCAYK6T7FT6FOTYI")
+                .GET() // GET is default
+                .build();
+
+        HttpResponse<String> response = client.send(request,
+                HttpResponse.BodyHandlers.ofString());
+        return response.body();
+    }
+
+    public static JSONObject[] getDataRecord(String response) {
+        JSONObject jsonResponse = new JSONObject(response);
+        JSONArray temp_array = jsonResponse.getJSONArray("data");
+        ArrayList<JSONObject> arrays = new ArrayList<>();
+        for (int i = 0; i < temp_array.length(); i++) {
+            JSONObject array = temp_array.getJSONObject(i);
+            arrays.add(array);
+        }
+        JSONObject[] jsons = new JSONObject[arrays.size()];
+        arrays.toArray(jsons);
+        return jsons;
+    }
+
+
+
+
 }
