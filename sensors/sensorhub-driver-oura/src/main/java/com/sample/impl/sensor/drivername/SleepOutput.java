@@ -64,6 +64,9 @@ public class SleepOutput extends AbstractSensorOutput<Sensor> implements Runnabl
 
     private Thread worker;
 
+    private String bearerToken;
+    private Date startTime, endTime;
+
     /**
      * Constructor
      *
@@ -80,7 +83,7 @@ public class SleepOutput extends AbstractSensorOutput<Sensor> implements Runnabl
      * Initializes the data structure for the output, defining the fields, their ordering,
      * and data types.
      */
-    void doInit() {
+    void doInit(String token, Date start, Date end) {
 
         logger.debug("Initializing Output");
 
@@ -106,6 +109,10 @@ public class SleepOutput extends AbstractSensorOutput<Sensor> implements Runnabl
                 .build();
 
         dataEncoding = sweFactory.newTextEncoding(",", "\n");
+
+        bearerToken = token;
+        startTime = start;
+        endTime = end;
 
         logger.debug("Initializing Output Complete");
     }
@@ -195,15 +202,15 @@ public class SleepOutput extends AbstractSensorOutput<Sensor> implements Runnabl
             ZoneId zone = ZoneId.of("America/Chicago");
             ZoneOffset zoneOffset = zone.getRules().getOffset(now);
 
-            String startDate = config.timeFilter.startTime.toInstant().atZone(zoneOffset).toLocalDate().toString();
-            String endDate = config.timeFilter.endTime.toInstant().atZone(zoneOffset).toLocalDate().toString();
+//            String startDate = config.timeFilter.startTime.toInstant().atZone(zoneOffset).toLocalDate().toString();
+//            String endDate = config.timeFilter.endTime.toInstant().atZone(zoneOffset).toLocalDate().toString();
 
             String requestString = "https://api.ouraring.com/v2/usercollection/daily_sleep?start_date=";
-            requestString += startDate;
+            requestString += startTime.toInstant().atZone(zoneOffset).toLocalDate().toString();
             requestString += "&end_date=";
-            requestString += endDate;
+            requestString += endTime.toInstant().atZone(zoneOffset).toLocalDate().toString();
 
-            String sleep_response = makeRequest(requestString);
+            String sleep_response = makeRequest(requestString, bearerToken);
             JSONObject[] sleep_jsons = getDataRecord(sleep_response);
 
             int i = 0;
@@ -262,11 +269,11 @@ public class SleepOutput extends AbstractSensorOutput<Sensor> implements Runnabl
         }
     }
 
-    public static String makeRequest(String requestString) throws IOException, InterruptedException {
+    public static String makeRequest(String requestString, String cloudToken) throws IOException, InterruptedException {
         HttpClient client = HttpClient.newHttpClient();
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(requestString))
-                .header("Authorization", "Bearer KEAZBXNBUZUMICTHQCAYK6T7FT6FOTYI")
+                .header("Authorization", "Bearer " + cloudToken)
                 .GET() // GET is default
                 .build();
 

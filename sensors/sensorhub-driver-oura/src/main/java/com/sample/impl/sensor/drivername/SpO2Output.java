@@ -34,6 +34,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Date;
 
 /**
  * Output specification and provider for {@link Sensor}.
@@ -62,6 +63,9 @@ public class SpO2Output extends AbstractSensorOutput<Sensor> implements Runnable
 
     private Thread worker;
 
+    private String bearerToken;
+    private Date startTime, endTime;
+
     /**
      * Constructor
      *
@@ -78,7 +82,7 @@ public class SpO2Output extends AbstractSensorOutput<Sensor> implements Runnable
      * Initializes the data structure for the output, defining the fields, their ordering,
      * and data types.
      */
-    void doInit() {
+    void doInit(String token, Date start, Date end) {
 
         logger.debug("Initializing Output");
 
@@ -102,6 +106,10 @@ public class SpO2Output extends AbstractSensorOutput<Sensor> implements Runnable
                 .build();
 
         dataEncoding = sweFactory.newTextEncoding(",", "\n");
+
+        bearerToken = token;
+        startTime = start;
+        endTime = end;
 
         logger.debug("Initializing Output Complete");
     }
@@ -191,15 +199,16 @@ public class SpO2Output extends AbstractSensorOutput<Sensor> implements Runnable
             ZoneId zone = ZoneId.of("America/Chicago");
             ZoneOffset zoneOffset = zone.getRules().getOffset(now);
 
-            String startDate = config.timeFilter.startTime.toInstant().atZone(zoneOffset).toLocalDate().toString();
-            String endDate = config.timeFilter.endTime.toInstant().atZone(zoneOffset).toLocalDate().toString();
+//            String startDate = config.timeFilter.startTime.toInstant().atZone(zoneOffset).toLocalDate().toString();
+//            String endDate = config.timeFilter.endTime.toInstant().atZone(zoneOffset).toLocalDate().toString();
+            String token = config.bearerToken;
 
             String requestString = "https://api.ouraring.com/v2/usercollection/daily_spo2?start_date=";
-            requestString += startDate;
+            requestString += startTime.toInstant().atZone(zoneOffset).toLocalDate().toString();
             requestString += "&end_date=";
-            requestString += endDate;
+            requestString += endTime.toInstant().atZone(zoneOffset).toLocalDate().toString();
 
-            String spo2_response = makeRequest(requestString);
+            String spo2_response = makeRequest(requestString, bearerToken);
             JSONObject[] spo2_jsons = getDataRecord(spo2_response);
 
             int i =0;
@@ -256,11 +265,11 @@ public class SpO2Output extends AbstractSensorOutput<Sensor> implements Runnable
         }
     }
 
-    public static String makeRequest(String requestString) throws IOException, InterruptedException {
+    public static String makeRequest(String requestString, String cloudToken) throws IOException, InterruptedException {
         HttpClient client = HttpClient.newHttpClient();
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(requestString))
-                .header("Authorization", "Bearer KEAZBXNBUZUMICTHQCAYK6T7FT6FOTYI")
+                .header("Authorization", "Bearer " + cloudToken)
                 .GET() // GET is default
                 .build();
 

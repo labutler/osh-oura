@@ -16,6 +16,8 @@ package com.sample.impl.sensor.drivername;
 import org.sensorhub.api.config.DisplayInfo;
 import org.sensorhub.api.sensor.SensorConfig;
 
+import java.util.Date;
+
 /**
  * Configuration settings for the {@link Sensor} driver exposed via the OpenSensorHub Admin panel.
  * <p>
@@ -41,6 +43,16 @@ public class Config extends SensorConfig {
     public String serialNumber = "sensor001";
 
     @DisplayInfo.Required
-    @DisplayInfo(desc="Only data matching this filter will be accessible through this storage instance")
-    public DataFilter timeFilter = new DataFilter();
+    @DisplayInfo(desc = "User Oura Cloud Token")
+    public String bearerToken;
+//    Mike: KOZ6PJWLHIFJLUHXYYT5FW5Z7D62N7VQ
+//    Lee:  KEAZBXNBUZUMICTHQCAYK6T7FT6FOTYI
+
+    @DisplayInfo.Required
+    @DisplayInfo(desc="Minimum time stamp of requested data")
+    public Date startTime;
+
+    @DisplayInfo.Required
+    @DisplayInfo(desc="Maximum time stamp of requested data")
+    public Date endTime;
 }

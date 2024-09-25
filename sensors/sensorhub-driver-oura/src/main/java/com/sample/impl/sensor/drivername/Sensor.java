@@ -61,19 +61,19 @@ public class Sensor extends AbstractSensorModule<Config> {
         // Create and initialize output
         sleepOutput = new SleepOutput(this);
         addOutput(sleepOutput, false);
-        sleepOutput.doInit();
+        sleepOutput.doInit(config.bearerToken, config.startTime, config.endTime);
 
         spO2Output = new SpO2Output(this);
         addOutput(spO2Output, false);
-        spO2Output.doInit();
+        spO2Output.doInit(config.bearerToken, config.startTime, config.endTime);
 
         heartOutput = new HeartOutput(this);
         addOutput(heartOutput, false);
-        heartOutput.doInit();
+        heartOutput.doInit(config.bearerToken, config.startTime, config.endTime);
 
         readinessOutput = new ReadinessOutput(this);
         addOutput(readinessOutput, false);
-        readinessOutput.doInit();
+        readinessOutput.doInit(config.bearerToken, config.startTime, config.endTime);
 
         // TODO: Perform other initialization
     }
