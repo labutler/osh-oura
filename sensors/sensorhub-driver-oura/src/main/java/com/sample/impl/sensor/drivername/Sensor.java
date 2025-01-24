@@ -55,25 +55,25 @@ public class Sensor extends AbstractSensorModule<Config> {
         super.doInit();
 
         // Generate identifiers
-        generateUniqueID("urn:osh:sensor:oura", config.serialNumber);
-        generateXmlID("Oura Ring", config.serialNumber);
+        generateUniqueID("urn:osh:sensor:oura", null);
+        generateXmlID("Oura Ring", null);
 
         // Create and initialize output
         sleepOutput = new SleepOutput(this);
         addOutput(sleepOutput, false);
-        sleepOutput.doInit(config.bearerToken, config.startTime, config.endTime);
+        sleepOutput.doInit(config.startTime, config.endTime);
 
         spO2Output = new SpO2Output(this);
         addOutput(spO2Output, false);
-        spO2Output.doInit(config.bearerToken, config.startTime, config.endTime);
+        spO2Output.doInit(config.startTime, config.endTime);
 
         heartOutput = new HeartOutput(this);
         addOutput(heartOutput, false);
-        heartOutput.doInit(config.bearerToken, config.startTime, config.endTime);
+        heartOutput.doInit(config.startTime, config.endTime);
 
         readinessOutput = new ReadinessOutput(this);
         addOutput(readinessOutput, false);
-        readinessOutput.doInit(config.bearerToken, config.startTime, config.endTime);
+        readinessOutput.doInit(config.startTime, config.endTime);
 
         // TODO: Perform other initialization
     }

@@ -38,13 +38,14 @@ public class Config extends SensorConfig {
     /**
      * The unique identifier for the configured sensor (or sensor platform).
      */
-    @DisplayInfo.Required
-    @DisplayInfo(desc = "Serial number or unique identifier")
-    public String serialNumber = "sensor001";
+//    @DisplayInfo.Required
+//    @DisplayInfo(desc = "Serial number or unique identifier")
+//    public String serialNumber = "sensor001";
 
-    @DisplayInfo.Required
-    @DisplayInfo(desc = "User Oura Cloud Token")
-    public String bearerToken;
+//    @DisplayInfo.Required
+//    @DisplayInfo(desc = "User Oura Cloud Token")
+//    public String bearerToken;
+
 //    Mike: KOZ6PJWLHIFJLUHXYYT5FW5Z7D62N7VQ
 //    Lee:  KEAZBXNBUZUMICTHQCAYK6T7FT6FOTYI
 
